@@ -2,12 +2,78 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+/**
+ * How long a client session may sit idle before its Durable Object deletes
+ * its own storage. The server is stateless (every tool returns static text or
+ * fetches mui.com live), so nothing of value is lost; the client simply
+ * reconnects and gets a fresh session.
+ */
+const SESSION_IDLE_TTL_SECONDS = 60 * 60; // 1 hour
+const CLEANUP_CALLBACK = "destroyIdleSession";
+
 // Define our MCP agent with tools for Material UI
-export class MyMCP extends McpAgent {
+export class MuiMcpAgent extends McpAgent {
 	server = new McpServer({
 		name: "Material UI Component Library",
 		version: "1.0.0",
 	});
+
+	// --- Session lifecycle -------------------------------------------------
+	//
+	// The agents SDK spins up one Durable Object per MCP session and only
+	// removes it when the client sends an explicit HTTP DELETE, which most
+	// clients (including mcp-remote) never do. Without the hooks below, every
+	// session that ever connected leaves a small SQLite database behind
+	// forever. We re-arm a self-destruct alarm on every bit of activity and
+	// wipe the object once it has been idle for SESSION_IDLE_TTL_SECONDS.
+
+	/** (Re)schedule the idle self-destruct for this session. */
+	private async touchSession() {
+		for (const schedule of this.getSchedules()) {
+			if (schedule.callback === CLEANUP_CALLBACK) {
+				await this.cancelSchedule(schedule.id);
+			}
+		}
+		await this.schedule(SESSION_IDLE_TTL_SECONDS, CLEANUP_CALLBACK);
+	}
+
+	/** Alarm callback: delete all storage unless a client is still connected. */
+	async destroyIdleSession() {
+		if (Array.from(this.getConnections()).length > 0) {
+			// Still connected (e.g. a long-lived SSE socket); check again later.
+			await this.touchSession();
+			return;
+		}
+		try {
+			// Drops the SDK tables, deletes all storage and the alarm, then
+			// aborts the object. An object with no storage and no alarm is no
+			// longer billed.
+			await this.destroy();
+		} catch (error) {
+			console.error("Failed to destroy idle MCP session:", error);
+		}
+	}
+
+	override async onStart(props?: Record<string, unknown>) {
+		await super.onStart(props);
+		await this.touchSession();
+	}
+
+	override async onConnect(
+		...args: Parameters<McpAgent["onConnect"]>
+	) {
+		await this.touchSession();
+		return super.onConnect(...args);
+	}
+
+	override async onSSEMcpMessage(
+		...args: Parameters<McpAgent["onSSEMcpMessage"]>
+	) {
+		await this.touchSession();
+		return super.onSSEMcpMessage(...args);
+	}
+
+	// --- Tools -------------------------------------------------------------
 
 	// All Material UI components extracted from llms.txt
 	private readonly COMPONENTS = [
@@ -552,11 +618,11 @@ export default {
 		const url = new URL(request.url);
 
 		if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-			return MyMCP.serveSSE("/sse").fetch(request, env, ctx);
+			return MuiMcpAgent.serveSSE("/sse").fetch(request, env, ctx);
 		}
 
 		if (url.pathname === "/mcp") {
-			return MyMCP.serve("/mcp").fetch(request, env, ctx);
+			return MuiMcpAgent.serve("/mcp").fetch(request, env, ctx);
 		}
 
 		return new Response("Not found", { status: 404 });
