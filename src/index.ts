@@ -1,4 +1,3 @@
-import { DurableObject } from "cloudflare:workers";
 import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -610,13 +609,6 @@ The sx prop is the recommended way for one-off styles:
 		});
 	}
 }
-
-/**
- * Retired class, kept only so the previously deployed Durable Object class
- * still has an export until it is deleted in migration v3. It is no longer
- * bound and receives no traffic. Remove it together with that migration.
- */
-export class MyMCP extends DurableObject {}
 
 // Define empty Env interface for Cloudflare Workers
 interface Env {}
