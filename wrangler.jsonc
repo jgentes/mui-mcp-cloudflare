@@ -17,12 +17,20 @@
 			// v2: the server is stateless, but the agents SDK creates one Durable
 			// Object per MCP client session and never cleans them up, so the
 			// MyMCP class accumulated tens of GB of orphaned session storage.
-			// Deleting the class wipes every instance; the renamed class starts
-			// empty and now destroys idle sessions itself (see src/index.ts).
-			"deleted_classes": ["MyMCP"],
+			// The replacement class starts empty and destroys idle sessions
+			// itself (see src/index.ts). Cloudflare refuses to delete a class
+			// while the live version still binds it (error 10061), so this is
+			// step 1 of 2: move the binding here, then delete MyMCP in v3 once
+			// this version is live.
 			"new_sqlite_classes": ["MuiMcpAgent"],
 			"tag": "v2"
 		}
+		// Step 2 (next deploy): uncomment to drop MyMCP and all of its data,
+		// and remove the MyMCP stub export from src/index.ts.
+		// {
+		// 	"deleted_classes": ["MyMCP"],
+		// 	"tag": "v3"
+		// }
 	],
 	"durable_objects": {
 		"bindings": [
