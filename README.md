@@ -143,7 +143,7 @@ This MCP server fetches documentation directly from [mui.com](https://mui.com/ma
 
 ### Storage
 
-The server itself is stateless. The Durable Object binding exists only because the Cloudflare `agents` SDK creates one object per MCP client session. Those session objects now delete their own storage after one hour of inactivity, so the Durable Object namespace stays small. If you deployed an earlier version, clearing the old `MyMCP` class takes two deploys because Cloudflare refuses to delete a class that the live version still binds: the `v2` migration in `wrangler.jsonc` moves the binding to the new class, and the commented-out `v3` migration (enable it after `v2` is live, and remove the `MyMCP` stub from `src/index.ts`) deletes `MyMCP` and all of its accumulated session data.
+The server itself is stateless. The Durable Object binding exists only because the Cloudflare `agents` SDK creates one object per MCP client session. Those session objects now delete their own storage after one hour of inactivity, so the Durable Object namespace stays small. If you deployed an earlier version, the `v2` and `v3` migrations in `wrangler.jsonc` move the binding to the new class and then delete the old `MyMCP` class along with all of its accumulated session data. They are split because Cloudflare refuses to delete a class that the live version still binds, so a deployment that is still on `v1` must deploy `v2` before `v3`.
 
 ## 📚 Example Usage
 

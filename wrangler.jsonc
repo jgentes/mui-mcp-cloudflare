@@ -19,18 +19,16 @@
 			// MyMCP class accumulated tens of GB of orphaned session storage.
 			// The replacement class starts empty and destroys idle sessions
 			// itself (see src/index.ts). Cloudflare refuses to delete a class
-			// while the live version still binds it (error 10061), so this is
-			// step 1 of 2: move the binding here, then delete MyMCP in v3 once
-			// this version is live.
+			// while the live version still binds it (error 10061), so v2 only
+			// moves the binding and v3 deletes the old class in a later deploy.
 			"new_sqlite_classes": ["MuiMcpAgent"],
 			"tag": "v2"
+		},
+		{
+			// v3: drop MyMCP and every instance's accumulated session data.
+			"deleted_classes": ["MyMCP"],
+			"tag": "v3"
 		}
-		// Step 2 (next deploy): uncomment to drop MyMCP and all of its data,
-		// and remove the MyMCP stub export from src/index.ts.
-		// {
-		// 	"deleted_classes": ["MyMCP"],
-		// 	"tag": "v3"
-		// }
 	],
 	"durable_objects": {
 		"bindings": [
