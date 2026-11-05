@@ -12,12 +12,22 @@
 		{
 			"new_sqlite_classes": ["MyMCP"],
 			"tag": "v1"
+		},
+		{
+			// v2: the server is stateless, but the agents SDK creates one Durable
+			// Object per MCP client session and never cleans them up, so the
+			// MyMCP class accumulated tens of GB of orphaned session storage.
+			// Deleting the class wipes every instance; the renamed class starts
+			// empty and now destroys idle sessions itself (see src/index.ts).
+			"deleted_classes": ["MyMCP"],
+			"new_sqlite_classes": ["MuiMcpAgent"],
+			"tag": "v2"
 		}
 	],
 	"durable_objects": {
 		"bindings": [
 			{
-				"class_name": "MyMCP",
+				"class_name": "MuiMcpAgent",
 				"name": "MCP_OBJECT"
 			}
 		]
